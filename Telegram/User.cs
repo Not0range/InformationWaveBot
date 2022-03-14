@@ -6,10 +6,12 @@ using System.Threading.Tasks;
 
 namespace InformationWaves.Telegram
 {
-    internal class Response<T>
+    internal class User
     {
-        public bool ok { get; set; }
+        public int id { get; set; }
 
-        public T result { get; set; }
+        public string first_name { get; set; }
+
+        public string username { get; set; }
     }
 }

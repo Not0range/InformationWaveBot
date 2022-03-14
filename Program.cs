@@ -7,23 +7,21 @@ namespace InformationWaves
     {
         public static void Main(params string[] args)
         {
-            var key = Environment.GetEnvironmentVariable("api_key");
+            string key = null;
             if (args.Length > 0)
-                new TelegramWorker(args[0]).Start().Wait();
-            else if(!string.IsNullOrEmpty(key))
-                new TelegramWorker(key).Start().Wait();
-            else
+                key = Environment.GetEnvironmentVariable("api_key");
+            if(string.IsNullOrEmpty(key))
             {
                 Console.WriteLine("Enter key");
                 key = Console.ReadLine();
-                if (!string.IsNullOrEmpty(key))
-                    new TelegramWorker(key).Start().Wait();
-                else
+                if (string.IsNullOrEmpty(key))
                 {
                     Console.WriteLine("Key must be set");
                     Environment.Exit(1);
                 }
             }
+
+            new TelegramWorker(key).Start().Wait();
         }
     }
 }

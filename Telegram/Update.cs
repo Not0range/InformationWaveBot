@@ -10,6 +10,6 @@ namespace InformationWaves.Telegram
     {
         public int update_id { get; set; }
 
-        public object? message { get; set; }
+        public Message message { get; set; }
     }
 }
