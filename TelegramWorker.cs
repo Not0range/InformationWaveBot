@@ -10,18 +10,36 @@ using System.Threading.Tasks;
 
 namespace InformationWaves
 {
+    /// <summary>
+    /// Класс для работы с Telegram API
+    /// </summary>
     internal class TelegramWorker
     {
+        /// <summary>
+        /// Основной URL для работы API
+        /// </summary>
         const string TG = "https://api.telegram.org/bot";
+        /// <summary>
+        /// Максимальное время ожидания обновления
+        /// </summary>
         const int TIMEOUT = 30;
 
+        /// <summary>
+        /// Перечень принимаемых обновлений
+        /// </summary>
         string[] AllowedUpdates { get; } = new string[]
         {
             "message",
             "channel_post"
         };
 
+        /// <summary>
+        /// Ключ для работы с API
+        /// </summary>
         string key;
+        /// <summary>
+        /// Объект-сигнал, для остановки работы
+        /// </summary>
         CancellationTokenSource cancellationSource;
 
         public TelegramWorker(string key)
@@ -30,6 +48,10 @@ namespace InformationWaves
             cancellationSource = new CancellationTokenSource();
         }
 
+        /// <summary>
+        /// Запуск асинхронного процесса приёма обновлений с сервера и последующая обработка
+        /// </summary>
+        /// <returns></returns>
         public async Task Start()
         {
             HttpClient client = new HttpClient();
@@ -60,7 +82,7 @@ namespace InformationWaves
                             ctx.Add(new Entities.Social
                             {
                                 Name = u.message.from.username,
-                                Group = u.message.chat.title,
+                                Group = u.message.chat.title ?? "",
                                 Text = u.message.text,
                                 Date = u.message.date.ToString(),
                                 Link = "123",
@@ -73,8 +95,6 @@ namespace InformationWaves
                             await ctx.SaveChangesAsync();
                         }
                     }
-
-                    //Console.WriteLine();//TODO
                 }
                 catch (HttpRequestException ex)
                 {
@@ -83,6 +103,9 @@ namespace InformationWaves
             }
         }
 
+        /// <summary>
+        /// Остановка сервиса
+        /// </summary>
         public void Stop()
         {
             cancellationSource.Cancel();

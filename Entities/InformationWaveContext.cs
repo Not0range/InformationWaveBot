@@ -10,11 +10,20 @@ namespace InformationWaves.Entities
 {
     internal class InformationWaveContext : DbContext
     {
+        /// <summary>
+        /// Строка соединения
+        /// </summary>
         const string CONNECTION_STRING = "User ID=postgres;Password=12345;Host=localhost;Port=5432;Database=database;";
+        /// <summary>
+        /// Таблица Socials
+        /// </summary>
         public DbSet<Social> Socials { get; set; }
 
         public InformationWaveContext() { }
 
+        /// <summary>
+        /// Метод настройки соединения с БД
+        /// </summary>
         protected override void OnConfiguring(DbContextOptionsBuilder options)
             => options.UseNpgsql(CONNECTION_STRING);
     }

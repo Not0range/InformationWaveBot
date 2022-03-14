@@ -20,6 +20,9 @@ namespace InformationWaves.Entities
         public string Group { get; set; }
         [Required]
         public string Text { get; set; }
+        /// <summary>
+        /// Дата, представленная в соцсети
+        /// </summary>
         [Required, MaxLength(50)]
         public string Date { get; set; }
         [Required]
@@ -35,6 +38,9 @@ namespace InformationWaves.Entities
         public bool? Keynote { get; set; }
         [Required]
         public bool Review { get; set; } = false;
+        /// <summary>
+        /// дату и время записи на сервер
+        /// </summary>
         [Column(TypeName = "date")]
         public DateTime? DateView { get; set; }
         [Required]
