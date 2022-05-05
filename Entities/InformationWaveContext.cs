@@ -13,7 +13,7 @@ namespace InformationWaves.Entities
         /// <summary>
         /// Строка соединения
         /// </summary>
-        const string CONNECTION_STRING = "User ID=postgres;Password=12345;Host=localhost;Port=5432;Database=database;";
+        const string CONNECTION_STRING = "User ID=postgres;Password=12345;Host=26.228.193.143;Port=5432;Database=database;";
         /// <summary>
         /// Таблица Socials
         /// </summary>

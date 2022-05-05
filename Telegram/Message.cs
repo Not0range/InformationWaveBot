@@ -8,7 +8,7 @@ namespace InformationWaves.Telegram
 {
     internal class Message
     {
-        public int messasge_id { get; set; }
+        public long message_id { get; set; }
 
         public User from { get; set; }
 
@@ -17,5 +17,7 @@ namespace InformationWaves.Telegram
         public Chat chat { get; set; }
 
         public string text { get; set; }
+
+        public string author_signature { get; set; }
     }
 }

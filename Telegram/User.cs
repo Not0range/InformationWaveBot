@@ -8,7 +8,7 @@ namespace InformationWaves.Telegram
 {
     internal class User
     {
-        public int id { get; set; }
+        public long id { get; set; }
 
         public string first_name { get; set; }
 

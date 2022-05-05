@@ -21,7 +21,17 @@ namespace InformationWaves
                 }
             }
 
-            new TelegramWorker(key).Start().Wait();
+            var worker = new TelegramWorker(key);
+            ConsoleCancelEventHandler handler =
+                (object sender, ConsoleCancelEventArgs e) =>
+                {
+                    e.Cancel = true;
+                    if (e.SpecialKey == ConsoleSpecialKey.ControlC)
+                        worker.Stop();
+                };
+            Console.CancelKeyPress += handler;
+            worker.Start().Wait();
+            Console.CancelKeyPress -= handler;
         }
     }
 }
