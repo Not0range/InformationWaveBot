@@ -54,7 +54,7 @@ namespace InformationWaves
         /// <returns></returns>
         public async Task Start()
         {
-            HttpClient client = new HttpClient();
+            var client = new HttpClient();
             int offset = 0;
             var ctx = new Entities.InformationWaveContext();
 

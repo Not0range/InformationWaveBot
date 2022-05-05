@@ -17,5 +17,5 @@ namespace InformationWaves.Telegram
         public Chat chat { get; set; }
 
         public string text { get; set; }
-}
+    }
 }

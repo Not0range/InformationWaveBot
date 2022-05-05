@@ -39,7 +39,7 @@ namespace InformationWaves.Entities
         [Required]
         public bool Review { get; set; } = false;
         /// <summary>
-        /// дату и время записи на сервер
+        /// Дата и время записи на сервер
         /// </summary>
         [Column(TypeName = "date")]
         public DateTime? DateView { get; set; }
