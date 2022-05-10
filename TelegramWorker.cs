@@ -36,16 +36,21 @@ namespace InformationWaves
             "channel_post"
         };
 
-        string[] allowedChannel { get; init; }
+        public string[] allowedChannels { get; private set; }
 
         /// <summary>
         /// Ключ для работы с API
         /// </summary>
-        string key;
+        readonly string key;
         /// <summary>
         /// Объект-сигнал, для остановки работы
         /// </summary>
-        CancellationTokenSource cancellationSource;
+        readonly CancellationTokenSource cancellationSource;
+        /// <summary>
+        /// Синхронизирующий объект; не позволяет изменить перечень допустимых каналов в момент обработки обновлений
+        /// </summary>
+        readonly Mutex mutex;
+
         /// <summary>
         /// Смещение обновлений
         /// </summary>
@@ -61,8 +66,9 @@ namespace InformationWaves
                 throw new ArgumentNullException(nameof(channel));
 
             this.key = key;
-            allowedChannel = channel;
+            allowedChannels = channel;
             cancellationSource = new CancellationTokenSource();
+            mutex = new Mutex();
         }
 
         /// <summary>
@@ -109,8 +115,25 @@ namespace InformationWaves
         public void Stop()
         {
             cancellationSource.Cancel();
+            mutex.Close();
         }
 
+        /// <summary>
+        /// Заменяет список допустимых каналов
+        /// </summary>
+        /// <param name="channels">Массив, содержащий новый список допустимых каналов</param>
+        public void UpdateAllowedChannels(string[] channels, bool blockMutex = true)
+        {
+            if (blockMutex) mutex.WaitOne();
+            allowedChannels = channels;
+            if (blockMutex) mutex.ReleaseMutex();
+        }
+
+        /// <summary>
+        /// Запрос на получение обновлений
+        /// </summary>
+        /// <param name="client">Веб-клиент выполнения запросов</param>
+        /// <returns>Задача, представляющая асинхронную операцию получения данных с удалённого сервера</returns>
         private async Task<Telegram.Response<Telegram.Update[]>> GetUpdates(HttpClient client)
         {
             var msg = await client.PostAsync($"{TG}{key}/getUpdates",
@@ -124,6 +147,11 @@ namespace InformationWaves
                 (msg.EnsureSuccessStatusCode().Content.ReadAsStream());
         }
 
+        /// <summary>
+        /// Обработчик смещения обновлений
+        /// </summary>
+        /// <param name="response">Ответ, полученный от удалённого сервера</param>
+        /// <exception cref="ArgumentNullException"></exception>
         private void OffsetHandle(Telegram.Response<Telegram.Update[]> response)
         {
             if (response == null || !response.result.Any())
@@ -134,6 +162,13 @@ namespace InformationWaves
                 offset = max + 1;
         }
 
+        /// <summary>
+        /// Обработчик сообщений каналов
+        /// </summary>
+        /// <param name="response">Ответ, полученный от удалённого сервера</param>
+        /// <param name="client">Веб-клиент выполения запросов</param>
+        /// <returns>Задача, представляющая асинхронную операцию обработки сообщений каналов</returns>
+        /// <exception cref="ArgumentNullException"></exception>
         private async Task ChannelPostHandle(Telegram.Response<Telegram.Update[]> response, HttpClient client)
         {
             if (response == null || !response.result.Any())
@@ -142,8 +177,11 @@ namespace InformationWaves
             foreach (var msg in response.result.Where(t => t.channel_post != null)
                 .Select(t => t.channel_post))
             {
-                if (allowedChannel.Any(t => t.Equals(msg.chat.username, 
-                    StringComparison.OrdinalIgnoreCase)) || string.IsNullOrWhiteSpace(msg.text))
+                mutex.WaitOne();
+                bool ignored = allowedChannels.Length > 0 && !allowedChannels.Any(t => t.Equals(msg.chat.username,
+                    StringComparison.OrdinalIgnoreCase)) || string.IsNullOrWhiteSpace(msg.text);
+                mutex.ReleaseMutex();
+                if (ignored)
                     continue;
 
                 var words = Regex.Split(msg.text, @"(\p{P}|\s)+").Where(t => !string.IsNullOrWhiteSpace(t));
@@ -179,6 +217,13 @@ namespace InformationWaves
             }
         }
 
+        /// <summary>
+        /// Запрос на поулчение полных данных о чате
+        /// </summary>
+        /// <param name="client">Веб-клиент выполения запросов</param>
+        /// <param name="chat">Объект чата, для которого необходимо получить информацию</param>
+        /// <returns>Задача, представляющая асинхронную операцию получения полной информации о чате</returns>
+        /// <exception cref="NullReferenceException"></exception>
         private async Task GetChatInfo(HttpClient client, Telegram.Chat chat)
         {
             var msg = await client.PostAsync($"{TG}{key}/getChat",
