@@ -16,7 +16,7 @@ namespace InformationWaves
     /// <summary>
     /// Класс для работы с Telegram API
     /// </summary>
-    internal class TelegramWorker
+    public class TelegramWorker : IDisposable
     {
         /// <summary>
         /// Основной URL для работы API
@@ -35,8 +35,14 @@ namespace InformationWaves
             "message",
             "channel_post"
         };
-
+        /// <summary>
+        /// Список каналов, с которых обрабатываются обновления
+        /// </summary>
         public string[] allowedChannels { get; private set; }
+        /// <summary>
+        /// Наблюдатель за изменениями файла списка допустимых каналов
+        /// </summary>
+        ChannelsWatcher watcher;
 
         /// <summary>
         /// Ключ для работы с API
@@ -56,19 +62,33 @@ namespace InformationWaves
         /// </summary>
         long offset = 0;
 
-        public TelegramWorker(string key, bool filter = false, string[] channel = null)
+        /// <summary>
+        /// Конструктор но умолчанию
+        /// </summary>
+        public TelegramWorker()
         {
-            if (string.IsNullOrEmpty(key))
-                throw new ArgumentNullException(nameof(key));
-            if (channel == null)
-                channel = new string[0];
-            if (filter && !channel.Any())
-                throw new ArgumentNullException(nameof(channel));
+            key = Environment.GetEnvironmentVariable("api_key");
+            if (string.IsNullOrWhiteSpace(key))
+                new ArgumentNullException(null, "В переменных окружения api_key не задан ключ.");
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("watch_channels_change")))
+            {
+                watcher = new ChannelsWatcher();
+                allowedChannels = watcher.GetChannels();
+                watcher.ChannelsUpdate += UpdateAllowedChannels;
+            }
+            else
+                allowedChannels = Array.Empty<string>();
 
-            this.key = key;
-            allowedChannels = channel;
             cancellationSource = new CancellationTokenSource();
             mutex = new Mutex();
+        }
+
+        /// <summary>
+        /// Деструктор
+        /// </summary>
+        ~TelegramWorker()
+        {
+            Dispose();
         }
 
         /// <summary>
@@ -95,6 +115,8 @@ namespace InformationWaves
                     }
                     catch (HttpRequestException ex)
                     {
+                        if (ex.StatusCode == HttpStatusCode.Unauthorized)
+                            throw new ApplicationException("Ключ задан неверно", ex);
                         Console.WriteLine(ex.Message);//TODO
                     }
                 }
@@ -102,6 +124,11 @@ namespace InformationWaves
             catch (TaskCanceledException)
             {
                 Console.WriteLine("Завершение работы...");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Критическая ошибка: {ex.Message}. Завершение работы...");
+                Dispose();
             }
             finally
             {
@@ -114,6 +141,7 @@ namespace InformationWaves
         /// </summary>
         public void Stop()
         {
+            watcher.Dispose();
             cancellationSource.Cancel();
             mutex.Close();
         }
@@ -122,11 +150,11 @@ namespace InformationWaves
         /// Заменяет список допустимых каналов
         /// </summary>
         /// <param name="channels">Массив, содержащий новый список допустимых каналов</param>
-        public void UpdateAllowedChannels(string[] channels, bool blockMutex = true)
+        public void UpdateAllowedChannels(string[] channels)
         {
-            if (blockMutex) mutex.WaitOne();
+            mutex.WaitOne();
             allowedChannels = channels;
-            if (blockMutex) mutex.ReleaseMutex();
+            mutex.ReleaseMutex();
         }
 
         /// <summary>
@@ -174,14 +202,12 @@ namespace InformationWaves
             if (response == null || !response.result.Any())
                 throw new ArgumentNullException(nameof(response));
 
+            mutex.WaitOne();
             foreach (var msg in response.result.Where(t => t.channel_post != null)
                 .Select(t => t.channel_post))
             {
-                mutex.WaitOne();
-                bool ignored = allowedChannels.Length > 0 && !allowedChannels.Any(t => t.Equals(msg.chat.username,
-                    StringComparison.OrdinalIgnoreCase)) || string.IsNullOrWhiteSpace(msg.text);
-                mutex.ReleaseMutex();
-                if (ignored)
+                if (allowedChannels.Length > 0 && !allowedChannels.Any(t => t.Equals(msg.chat.username,
+                    StringComparison.OrdinalIgnoreCase)) || string.IsNullOrWhiteSpace(msg.text))
                     continue;
 
                 var words = Regex.Split(msg.text, @"(\p{P}|\s)+").Where(t => !string.IsNullOrWhiteSpace(t));
@@ -215,6 +241,7 @@ namespace InformationWaves
                     await ctx.DisposeAsync();
                 }
             }
+            mutex.ReleaseMutex();
         }
 
         /// <summary>
@@ -238,6 +265,11 @@ namespace InformationWaves
                 throw new NullReferenceException("Сервер ничего не вернул");
 
             chat.invite_link = c.result.invite_link;
+        }
+
+        public void Dispose()
+        {
+            Stop();
         }
     }
 }
