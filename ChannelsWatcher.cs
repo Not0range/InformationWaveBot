@@ -44,6 +44,7 @@ namespace InformationWaves
             watcher.Renamed += Watcher_Renamed;
             watcher.Deleted += Watcher_Deleted;
             watcher.Error += Watcher_Error;
+            watcher.EnableRaisingEvents = true;
         }
         /// <summary>
         /// Обработчик возникающих ошибок
@@ -90,6 +91,7 @@ namespace InformationWaves
 
         public void Dispose()
         {
+            watcher.EnableRaisingEvents = false;
             watcher.Changed -= Watcher_Changed;
             watcher.Renamed -= Watcher_Renamed;
             watcher.Deleted -= Watcher_Deleted;

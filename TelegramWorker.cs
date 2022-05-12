@@ -206,9 +206,12 @@ namespace InformationWaves
             foreach (var msg in response.result.Where(t => t.channel_post != null)
                 .Select(t => t.channel_post))
             {
-                if (allowedChannels.Length > 0 && !allowedChannels.Any(t => t.Equals(msg.chat.username,
-                    StringComparison.OrdinalIgnoreCase)) || string.IsNullOrWhiteSpace(msg.text))
+                mutex.WaitOne();
+                bool ignored = allowedChannels.Length > 0 && !allowedChannels.Any(t => t.Equals(msg.chat.username,
+                    StringComparison.OrdinalIgnoreCase)) || string.IsNullOrWhiteSpace(msg.text);
+                if (ignored)
                     continue;
+                mutex.ReleaseMutex();
 
                 var words = Regex.Split(msg.text, @"(\p{P}|\s)+").Where(t => !string.IsNullOrWhiteSpace(t));
 
@@ -241,7 +244,6 @@ namespace InformationWaves
                     await ctx.DisposeAsync();
                 }
             }
-            mutex.ReleaseMutex();
         }
 
         /// <summary>
